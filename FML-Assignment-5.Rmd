@@ -1,0 +1,195 @@
+---
+title: "Untitled"
+author: "Manaswini"
+date: "2024-04-07"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+
+#Required libraries
+```{r}
+
+library(cluster)
+library(caret)
+library(dendextend)
+library(knitr)
+library(factoextra)
+library(readr)
+
+```
+
+
+#Importing the dataset
+```{r}
+
+df <- read.csv("C:/Users/Winnie/Downloads/Cereals.csv")
+View(df)
+data <- data.frame(df[,4:16])
+
+```
+
+
+#Removing missing values of all cereals
+```{r}
+data <- na.omit(data)
+```
+
+
+#Data normalization using scale function
+```{r}
+data_normalize <- scale(data)
+```
+
+
+##TASK-1
+#Using Euclidean distance to create hierarchial cluster using normalized data
+#Complete Linkage with hierarchial cluster
+```{r}
+Dist <- dist(data_normalize, method = "euclidean")
+
+H_clust <- hclust(Dist, method = "complete")
+```
+
+
+#Dendogram Plot
+```{r}
+
+plot(H_clust, cex = 0.7, hang = -1)
+
+```
+
+
+#Perform computations using AGNES clustering algorithm and with various linkage methods
+```{r}
+single_Hclust <- agnes(data_normalize, method = "single")
+complete_Hclust <- agnes(data_normalize, method = "complete")
+average_Hclust <- agnes(data_normalize, method = "average")
+ward_Hclust <- agnes(data_normalize, method = "ward")
+```
+
+#Choosing the correct course of action
+```{r}
+
+print(single_Hclust$ac)
+print(complete_Hclust$ac)
+print(average_Hclust$ac)
+print(ward_Hclust$ac)
+
+```
+#ward startegy is most suitable one, as it's value is 0.9046042
+
+
+#TASK-2
+#choosing the number of clusters
+```{r}
+
+pltree(ward_Hclust, cex = 0.5, hang = -1, main = "Dendrogram of agnes (Using Ward)")
+rect.hclust(ward_Hclust, k = 5, border = 2:7)
+R_Group <- cutree(ward_Hclust, k=5)
+D_frame_2 <- as.data.frame(cbind(data_normalize,R_Group))
+
+```
+
+
+
+```{r}
+fviz_cluster(list(data = D_frame_2, cluster = R_Group))
+```
+#From above observation 5 clusters can be choosen
+
+
+
+#TASK-3
+#Determining the stability and structure of the clusters. 
+```{r}
+#creating partitions
+set.seed(123)
+partition_one <- data[1:55,]
+partition_two <- data[56:74,]
+```
+
+
+#Performing Hierarchical Clustering while considering k = 5. Compute with AGNES and with different linkage methods for training dataset
+```{r}
+
+single_df <- agnes(scale(partition_one), method = "single")
+complete_df <- agnes(scale(partition_one), method = "complete")
+average_df <- agnes(scale(partition_one), method = "average")
+ward_df <- agnes(scale(partition_one), method = "ward")
+cbind(single=single_df$ac , complete=complete_df$ac , average= average_df$ac , ward= ward_df$ac)
+pltree(ward_df, cex = 0.6, hang = -1, main = "Dendogram of Agnes with Partitioned Data (Using Ward)")
+rect.hclust(ward_df, k = 5, border = 2:7)
+cut_2 <- cutree(ward_df, k = 5)
+
+```
+
+
+#Calculating the centroids
+```{r}
+
+data_result <- as.data.frame(cbind(partition_one, cut_2))
+data_result[data_result$cut_2==1,]
+centroid_1 <- colMeans(data_result[data_result$cut_2==1,])
+data_result[data_result$cut_2==2,]
+centroid_2 <- colMeans(data_result[data_result$cut_2==2,])
+data_result[data_result$cut_2==3,]
+centroid_3 <- colMeans(data_result[data_result$cut_2==3,])
+data_result[data_result$cut_2==4,]
+centroid_4 <- colMeans(data_result[data_result$cut_2==4,])
+centroids <- rbind(centroid_1, centroid_2, centroid_3, centroid_4)
+x2 <- as.data.frame(rbind(centroids[,-14], partition_two))
+
+```
+
+
+#figuring out the distance
+```{r}
+
+Dist_1 <- get_dist(x2)
+Matrix_1 <- as.matrix(Dist_1)
+dataframe1 <- data.frame(data=seq(1,nrow(partition_two),1), Clusters = rep(0,nrow(partition_two)))
+for(i in 1:nrow(partition_two)) 
+  {dataframe1[i,2] <- which.min(Matrix_1[i+4, 1:4])}
+dataframe1
+cbind(D_frame_2$R_Group[56:74], dataframe1$Clusters)
+table(D_frame_2$R_Group[56:74] == dataframe1$Clusters)
+
+```
+
+#From above observation we can conclude that the model is stable as we got 12 TRUE and 7 FALSE
+
+
+#TASK-4
+#The elementary public schools would like to choose a set of cereals to include in their
+daily cafeterias. Every day a different cereal is offered, but all cereals should support a
+healthy diet. For this goal, you are requested to find a cluster of “healthy cereals.”
+Should the data be normalized? If not, how should they be used in the cluster analysis?
+```{r}
+
+Health_data <- df
+Health_data_RD <- na.omit(Health_data)
+clust <- cbind(Health_data_RD, R_Group)
+clust[clust$R_Group==1,]
+clust[clust$R_Group==2,]
+clust[clust$R_Group==3,]
+clust[clust$R_Group==4,]
+
+```
+
+
+```{r}
+
+mean(clust[clust$R_Group==1,"rating"])
+mean(clust[clust$R_Group==2,"rating"])
+mean(clust[clust$R_Group==3,"rating"])
+mean(clust[clust$R_Group==4,"rating"])
+
+```
+#From the above observation we can see that cluster 1 has the highest value 
+#Hence Group 1 can be considered as the cluster for healthy diet
